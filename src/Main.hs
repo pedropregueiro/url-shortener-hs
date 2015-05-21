@@ -34,23 +34,22 @@ getIndexH connection = do
       <input name="url">
       <button type="submit">Create shortcut
     <hr>
-    <h1>list of shortened URLs (top 10)
+    <h1>List of shortened URLs (top 10)
     $if null shorts
       <p>No shortened URLs yet!
     $else
     <ul>
-      $forall Mapping key url <- shorts
-        <li>#{key} --> #{url}
+      $forall (count, url) <- shorts
+        <li>#{count} --> #{url}
   |]
 
 
 
-getListShortened :: Connection -> IO [Mapping]
+getListShortened :: Connection -> IO [(Integer, T.Text)]
 getListShortened connection = do
   result <- query_
     connection
-    "SELECT * from mapping" :: IO [Mapping]
-  --mapM_ print result
+    "SELECT count(key) as count, url FROM mapping GROUP BY url ORDER BY count desc LIMIT 10" :: IO [(Integer, T.Text)]
   return result
 
 
