@@ -15,20 +15,49 @@ import Control.Monad.IO.Class
 import System.Random
 import Control.Exception.Base (bracket)
 
-data Mapping = Mapping T.Text T.Text
+data Mapping = Mapping { key :: T.Text, url :: T.Text } deriving (Show)
+
+instance FromRow Mapping where
+  fromRow = Mapping <$> field <*> field
 
 
-getIndexH = do
+getIndexH connection = do
+  shorts <- liftIO $ getListShortened connection
   (html . renderHtml) [shamlet|
   $doctype 5
   <html>
     <head>
       <title>Url Shortener
   <body>
+    <h1>Shorten URL
     <form method="POST" action="/create">
       <input name="url">
       <button type="submit">Create shortcut
+    <hr>
+    <h1>list of shortened URLs (top 10)
+    $if null shorts
+      <p>No shortened URLs yet!
+    $else
+    <ul>
+      $forall Mapping key url <- shorts
+        <li>#{key} --> #{url}
   |]
+
+
+
+getListShortened :: Connection -> IO [Mapping]
+getListShortened connection = do
+  result <- query_
+    connection
+    "SELECT * from mapping" :: IO [Mapping]
+  --mapM_ print result
+  return result
+
+
+
+
+
+
 
 
 postCreateH connection = do
@@ -62,7 +91,7 @@ createRandomKey len = do
 
 
 app connection = scotty 3000 $ do
-  get "/"         getIndexH
+  get "/"         (getIndexH connection)
   post "/create"  (postCreateH connection)
   get "/:key"     (getLookupH connection)
 
